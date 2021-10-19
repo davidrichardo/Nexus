@@ -5,8 +5,10 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
-import javax.management.RuntimeErrorException;
-
+import org.modelmapper.ModelMapper;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -15,78 +17,84 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.nexus.orderapi.dto.MercanciaDTO;
 import com.nexus.orderapi.entity.Mercancia;
 
+import com.nexus.orderapi.services.MercanciaService;
+
+import lombok.extern.slf4j.Slf4j;
+@Slf4j
 @RestController
 public class MercanciaController {
-
-	private List<Mercancia> mercancias = new ArrayList<>();
 	
-	public MercanciaController() {
-		
-		for(int c=0;c<10;c++) {
-			mercancias.add(Mercancia.builder()
-					.id(c+1L)
-					.nombre("Nombre"+(c+1))
-					.producto("producto"+(c+1))
-					.cantidad(1)
-//					.fecha_ingreso(new Date())
-					.build()
-					);
-			}
-	}
+	@Autowired
+	private MercanciaService mercanciaService;
+	
+    @Autowired
+    private ModelMapper modelMapper;
+
+	
 		
 	@GetMapping(value="mercancias")
-	public List<Mercancia> findAll(){
-		return this.mercancias;
+	public List<MercanciaDTO> findAll(){
+
+		
+		List<Mercancia> mercancias = mercanciaService.findAll();
+		List mercanciasDtos = new ArrayList<MercanciaDTO>();
+		for(Mercancia mercancia : mercancias) {
+			mercanciasDtos.add(convertToDTO(mercancia));
+			
+		}
+		return mercanciasDtos;
 	}
 	
 	@GetMapping(value="mercancias/{mercanciaId}")
-	public Mercancia findById(@PathVariable("mercanciaId") Long mercanciaId) {
-		for(Mercancia mercancia : mercancias) {
-			if(mercancia.getId().longValue() == mercanciaId.longValue()) {
-				return mercancia;
-			}
-			
-		}
-		return null;
+	public MercanciaDTO findById(@PathVariable("mercanciaId") Long mercanciaId) {
+		
+		Mercancia mercancia = mercanciaService.findById(mercanciaId);
+		MercanciaDTO mercanciaDTO = convertToDTO(mercancia);
+		
+		return mercanciaDTO;
 	}
 	
 	@PostMapping(value="mercancias")
-	public Mercancia create(@RequestBody Mercancia mercancia) {
-		mercancias.add(mercancia);
-		return mercancia; 
+	public MercanciaDTO create(@RequestBody MercanciaDTO mercanciaDTO) {
+		Mercancia newMercanciaEntity = convertToEntity(mercanciaDTO);
+		Mercancia newMercancia = mercanciaService.create(newMercanciaEntity);
+		return convertToDTO(newMercancia);
+
 	}
 	
 	@PutMapping(value="mercancias")
-	public Mercancia update(@RequestBody Mercancia mercancia) {
-		for(Mercancia mercan : this.mercancias) {
-			if(mercan.getId().longValue()==mercancia.getId().longValue()) {
-				mercan.setCantidad(mercancia.getCantidad());
-				mercan.setNombre(mercancia.getNombre());
-				mercan.setProducto(mercancia.getProducto());
-				return mercan;
-			}
-		}
-		throw new RuntimeException("No existe Productos");	
+	public MercanciaDTO update(@RequestBody MercanciaDTO mercanciaDto) {
+		
+		Mercancia mercanciaUpdate = convertToEntity(mercanciaDto);
+		Mercancia mercanciaUpdateEntity = mercanciaService.update(mercanciaUpdate);
+		return convertToDTO(mercanciaUpdateEntity);
+		
 	}
 	
 	@DeleteMapping(value="mercancias/{mercanciaId}")
-	public void delete(@PathVariable("mercanciaId") Long mercancia) {
+	public  void delete(@PathVariable("mercanciaId") Long mercanciaId) {
 		
-		Mercancia deleteMercancia = null;
-		
-		for(Mercancia mercan: this.mercancias) {
-			if(mercancia.longValue()==mercan.getId().longValue()) {
-				deleteMercancia = mercan;
-				break;
-			}
-		}
-		if(deleteMercancia == null) throw new RuntimeException("No existe el id");
-			
-		this.mercancias.remove(deleteMercancia);
-		
+		mercanciaService.delete(mercanciaId);
+	
 	}
+	
+    private Mercancia convertToEntity (MercanciaDTO mercanciaDTO)
+    {
+        log.info("DTO Object = {} ", mercanciaDTO);
+
+        Mercancia order = modelMapper.map(mercanciaDTO, Mercancia.class);
+
+        return order;
+    }
+
+    private MercanciaDTO convertToDTO (Mercancia mercancia)
+    {
+        MercanciaDTO mercanciaDTO = modelMapper.map(mercancia, MercanciaDTO.class);
+        return mercanciaDTO;
+    }
 
 	
 
